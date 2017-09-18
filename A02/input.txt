@@ -1,0 +1,7 @@
+label0:
+label1:
+.word 2
+label3:
+label4:
+.word 3
+.word 4

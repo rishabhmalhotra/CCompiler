@@ -1,0 +1,70 @@
+#lang Racket
+(require compatibility/mlist)
+
+;;
+;; ***************************************************
+;; Rishabh Malhotra (20609328)
+;; CS 241 Winter 2017
+;; Assignment 03, Problem 1
+;; ****************************************************
+;;
+
+
+; key for each Node is the actual number in the tree at that node.
+; val for each Node is the number of children it has.
+; lstOfChildren is the list of all its children (from left to right)
+; in other words, a list of nodes.
+(define-struct node (key val lstOfChildren) #:transparent)
+
+; lst_of_inputs is the list of inputs obtained after redirecting user input.
+; read-all-input takes in the redirected output of scan-input and forms it into
+
+(define (read-from-file file)
+ (let ((p (open-input-file file)))
+    (let f ((lst_of_inputs (read p)))
+      (if (eof-object? lst_of_inputs)
+        (begin
+          (close-input-port p)
+          '())
+        (cons lst_of_inputs (f (read p)))))))
+
+;(read-from-file "input.txt")
+
+
+; Put the list of lists (of Nodes) inside lst_of_inputs
+;(define lst_of_inputs empty)
+;(set! lst_of_inputs (read-from-file "input.txt"))
+
+
+; make_Tree uses the lst_of_inputs and constructs the corresponding valid
+; non-empty tree.
+
+(define (make-tree input_list)
+  (cond
+    [(empty? input_list) empty]
+    [(= (second input_list) 0) (make-node (first input_list)
+                                          (second input_list)
+                                          (make-tree empty))
+                               (make-tree (rest (rest input_list)))]
+                                          ;(append (list empty)
+                                           ;       (list (make-tree (rest (rest input_list))))))]
+    [(make-node (first input_list) (second input_list)
+                (list (make-tree (rest (rest input_list)))))]))
+
+
+#|(define (make-tree input_list)
+  (cond
+    [(empty? input_list) empty]
+    [(= (length input_list) 2) (make-node (first input_list)
+                                             (second input_list)
+                                             empty)]
+    [(= (second input_list) 0) (and (list (make-node (first input_list)
+                                          (second input_list)
+                                          (list empty)))
+                                          (list (make-tree (rest (rest input_list)))))]
+    [(make-node (first input_list) (second input_list)
+                (list (make-tree (rest (rest input_list)))))]))
+  |#                                              
+;(node 1 3 (list (node 2 2 (list (node 5 0 '(())) (node 6 0 '(()))))))
+
+(make-tree (read-from-file "input1.txt"))

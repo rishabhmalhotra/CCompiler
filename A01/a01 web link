@@ -1,0 +1,346 @@
+<html>
+  <head>
+    <title>CS 241 &mdash; Winter 2017 &mdash; Assignment 1</title>
+  </head>
+  <body>
+<a name="a1"></a>
+<h1>CS 241 &mdash; Winter 2017 &mdash; Assignment 1</h1>
+<table align="center">
+<col width="33%" /><col width="33%" /><col width="33%" />
+<tr><th colspan="3"><a href="../#assignments">Assignments</a> for <a href="../">CS 241</a></th></tr>
+<tr>
+<td></td>
+<td align="center">Assignment 1</td>
+<td align="right"><p><a href="../a2">Assignment 2 &rarr;</a></p></td>
+</tr>
+<tr>
+<td></td>
+<th>Friday, January 13, 2017 at 5:00 pm</th>
+<td align="right">Friday, January 20, 2017 at 5:00 pm</td>
+</tr>
+<tr><td colspan="3" align="center"><a href="#a1p1">P1</a> &bull; <a href="#a1p2">P2</a> &bull; <a href="#a1p3">P3</a> &bull; <a href="#a1p4">P4</a> &bull; <a href="#a1p5">P5</a> &bull; <a href="#a1p6">P6</a>
+</table>
+
+<p>
+
+<!--
+In this assignment, you will practice using the CSCF UNIX
+environment and begin writing very simple programs
+in MIPS machine language.
+-->
+
+In this assignment, you will begin writing very simple
+programs in MIPS machine language on the CSCF UNIX environment.
+
+</p>
+
+<p>
+
+You must prepare and test your solutions using tools available on the
+CSCF Student UNIX Computing Environment.  You must submit your solutions
+to the Marmoset automatic
+grading system available at <a href="https://marmoset.student.cs.uwaterloo.ca"><tt>https://marmoset.student.cs.uwaterloo.ca</tt></a>,
+which will run them on a
+number of test inputs and grade them automatically.  You may
+submit your solutions as many times as you wish prior to the
+submission deadline (though the number of test runs is limited; see below).
+Your mark is determined entirely by the
+set of test inputs for which your best submission generates the
+correct answer.
+
+</p>
+
+<p>
+
+You must test your submissions prior to submitting them to Marmoset.
+You should not rely on Marmoset as a means of submission testing.
+
+</p>
+
+<p>
+
+Marmoset will test your assignment using two kinds of tests: public tests
+and release tests. For each problem, there is one public test input,
+which is included as an example in this document at the end of each problem
+(except Problem 6). Marmoset allows you to view the output of your code 
+when executed with the public test input. Once your code passes the public test,
+you may ask Marmoset to run it on the remaining release tests.
+Marmoset will not show you the output from these tests, but it will
+tell you how many tests you passed, and the names of the first two
+tests that you failed. Marmoset also provides the test input for 
+most release tests. You can use this information to fix your
+code and resubmit. For many problems, the test input and output 
+of one "blind" test are never released, either by Marmoset or by
+course staff.
+
+</p>
+
+<p>
+
+To encourage you to start the assignment early, the number of release
+test runs that you may request for each problem is limited to three in
+every 12-hour period. Marmoset gives you three release test tokens for
+each problem. Each test run uses up one token. The token is returned to
+you 12 hours after the test run request.
+
+</p>
+
+<p>
+
+<b>Important Note:</b>
+For this and future assignments, be sure to enter the command
+<tt>source /u/cs241/setup</tt> to gain access to the CS 241 tools.
+
+</p>
+
+<!--<h2>Part I.  Getting Started</h2>
+
+Read and work through <a href=../unixbare.html>Unix - The Bare Essentials</a>.
+You may, for additional context, wish to read the CSCF
+<a href="http://www.math.uwaterloo.ca/~consulta/firstweek/">Getting Started with UNIX</a> guide.
+
+<p>
+
+In the CSCF UNIX environment, use the command <tt>vimtutor</tt> to start
+a tutorial about the <tt>vim</tt> editor.
+
+<p>
+
+Use the <tt>vim</tt> editor (or its graphical equivalents <tt>gvim</tt> or <tt>evim</tt>)
+to create a file called <tt>hello.txt</tt> that contains the following two lines:
+<pre>
+Hello
+from Unix
+</pre>
+<p>
+You may check to see that you have done this correctly by viewing the
+file using the Unix command <tt>cat</tt> as described in <i>Unix - 
+The Bare Essentials</i>.  You may further check your file using
+the Unix command <tt>wc</tt> which lists the number of lines, the
+number of words, and the number of characters in the file:
+<pre>
+% wc hello.txt
+      2       3      16 hello.txt
+</pre>
+
+<a name="a1p1"></a>
+<h3>Problem 1 &mdash; 7 marks of 60 (filename: <tt>hello.txt</tt>)</h3>
+
+When you are satisfied that your file <tt>hello.txt</tt> contains exactly
+the text above, submit it to Marmoset for grading as problem 1.
+Note that the filename must be <tt>hello.txt</tt>, not 
+<tt>HELLO.TXT</tt>.  In general, files submitted to Marmoset
+must have exactly the name specified in the problem statement,
+including the same use of upper and lower case letters.
+
+<a name="a1p2"></a>
+<h3>Problem 2 &mdash; 7 marks of 60 (filename: <tt>wget.txt</tt>)</h3>
+
+<p>
+The <tt>wget</tt> command (short for &quot;web get&quot;) is useful for downloading
+a file from a URL on the World Wide Web into your local directory.  Further
+details about <tt>wget</tt> are available by executing the command
+<tt>man wget</tt>. (The command <tt>man</tt> (short for &quot;manual&quot;)
+displays information about a Unix command (its &quot;man page&quot;).  Try, for example, <tt>man wc</tt> to
+learn more about the word count command.  <tt>man</tt> will display the
+document one screen at a time.  Hit the spacebar to advance to the next
+screen.)
+</p>
+
+<p>You will find <tt>wget</tt> useful throughout this term; whenever we provide
+starter files for assignments, <tt>wget</tt> provides a convenient means of
+fetching these into your working directory.</p>
+
+<p>Use the <tt>wget</tt> command to fetch <em>this document</em> (the one
+you are reading right now) from the World Wide Web into your local Unix
+directory.  Then rename the file to <tt>wget.txt</tt> and submit it to
+Marmoset.</p>
+-->
+<h2>Part I. Creating binary files with <tt>cs241.wordasm</tt></h2>
+
+We have provided the tool <tt>cs241.wordasm</tt> that may be
+used to create a file whose binary content is specified using
+hexadecimal notation.
+
+    <tt>cs241.wordasm</tt> reads the hexadecimal representation
+    of several 32-bit words on standard input.
+    On standard output, it outputs a file containing, for each of the
+    input words, the four bytes containing the 32 bits
+    represented by the word (8 bits per byte).
+    On each line of input, any characters after a semicolon 
+    (;) are assumed to be comments and ignored. Example:
+<pre>
+% cat > input
+.word 0x43533234  ; C(43) S(53) 2(32) 4(34)
+.word 0x3120726f  ; 1(31) space(20) r(72) o(6f)
+.word 0x636b730a  ; c(63) k(6b) s(73) newline(0a)
+% java cs241.wordasm &lt; input
+CS241 rocks
+% java cs241.wordasm &lt; input &gt; output
+% xxd &lt; output
+0000000: 4353 3234 3120 726f 636b 730a            CS241 rocks.
+</pre>
+Note that the <tt>xxd</tt> Unix command shows the contents
+of the file both as hexadecimal numbers and as ASCII characters.
+
+<!--<a name="A1P3"></a>
+<h3>Problem 1 (8 marks of 60) (filename: <tt>helloworld.hex</tt>)</h3>
+Write a hexadecimal representation (using the .word notation)
+of a file with exactly the same content as <tt>hello.txt</tt>
+submitted for problem 1.
+You may find it useful to use the UNIX command <tt>man ascii</tt>
+to get an ASCII code chart. Before submitting to Marmoset, run
+the <tt>cs241.wordasm</tt> tool with your solution as
+standard input to check that your output is identical to
+<tt>hello.txt</tt>.
+
+<p><i>Unix includes a command, <tt>diff</tt>, to compare two files.  
+Try it!</i></p>
+-->
+
+<a name="a1p1"></a>
+<h3>Problem 1 &mdash; 8 marks of 46 (filename: <tt>helloworld.hex</tt>)</h3>
+Write a hexadecimal representation (using the .word notation)
+of a file with contents: 
+<pre>
+Hello
+from Unix
+</pre>
+You may find it useful to use the UNIX command <tt>man ascii</tt>
+to get an ASCII code chart. Before submitting to Marmoset, run
+the <tt>cs241.wordasm</tt> tool with your solution as
+standard input to check that your output is correct.
+
+<p> Click <a href="#a1">here</a> to go back to the top of the page.
+
+<h2>Part II. MIPS Machine Language Programming</h2>
+The <tt>mips.twoints</tt> tool loads a MIPS machine language 
+program from a file into memory starting at location 0. It then reads two
+integers, stores them into registers 1 and 2, runs your program, and,
+when your program returns to the instruction whose address is stored
+in register 31, prints the values of all the registers and exits.
+Run this tool using the command <tt>java mips.twoints <i><b>mycode.mips</b></i></tt>,
+replacing <tt><i><b>mycode.mips</b></i></tt> with the name of a file containing
+your machine code.
+<p>
+Since MIPS machine language is encoded in binary, not text,
+you cannot create it directly using an editor like vim.  You
+must specify your machine language program in hexadecimal and
+use <tt>cs241.wordasm</tt> to translate it to (binary) machine
+language.
+<p>
+For each of the following problems, create the hexadecimal 
+representation of a MIPS machine language program that solves
+the problem.  Test your program using <tt>cs241.wordasm</tt>
+and <tt>mips.twoints</tt> as follows:
+<pre>
+% vim <i>mycode.hex</i>
+% java cs241.wordasm < <i>mycode.hex</i> > <i>mycode.mips</i>
+% java mips.twoints <i>mycode.mips</i>
+Enter value for register 1: 1
+Enter value for register 2: 2
+Running MIPS program.
+...
+</pre>
+
+<p>
+Each problem specifies a filename for the file that you will submit.
+You must use the specified filename for the testing scripts to work
+correctly.
+<p>
+
+<p>
+Scratch registers used to hold temporary results may be used and do not need to be set back to 0.
+
+<a name="a1p2"></a>
+<h3>Problem 2 &mdash; 8 marks of 46 (filename: <tt>a1p2.hex</tt>)</h3>
+Write the hexadecimal notation for a MIPS machine language program that returns 
+to the address saved in register 31. This is the only thing your program should do.
+<p> Example of running the program:
+<pre>
+Enter value for register 1: 1
+Enter value for register 2: 2
+Running MIPS program.
+MIPS program completed normally.
+...
+</pre>
+
+<p> Click <a href="#a1">here</a> to go back to the top of the page.
+
+<a name="a1p3"></a>
+<h3>Problem 3 &mdash; 8 marks of 46 (filename: <tt>a1p3.hex</tt>)</h3>
+Write the hexadecimal notation for a MIPS machine language program that
+copies the value in register 1 to register 3, then adds the values in register 1 and 3 placing the
+result in register 4 and then returns.
+
+<p> Example of running the program:
+<pre>
+Enter value for register 1: 2
+Enter value for register 2: 3
+Running MIPS program.
+MIPS program completed normally.
+$01 = 0x00000002   $02 = 0x00000003   $03 = 0x00000002   $04 = 0x00000004   
+...
+</pre>
+<!-- Notice that registers 1 and 2 still contain the original input. -->
+
+<p> Click <a href="#a1">here</a> to go back to the top of the page.
+    
+<a name="a1p4"></a>
+<h3>Problem 4 &mdash; 8 marks of 46 (filename: <tt>a1p4.hex</tt>)</h3>
+Write the hexadecimal notation for a MIPS machine language program that
+determines the minimum of the values in registers 1 and 2 interpreted as two's
+complement integers,
+places it in register 3, and returns.
+
+<p> Example of running the program:
+<pre>
+Enter value for register 1: 3
+Enter value for register 2: 5
+Running MIPS program.
+MIPS program completed normally.
+$01 = 0x00000003   $02 = 0x00000005   $03 = 0x00000003   $04 = 0x00000001   
+...
+</pre>
+<!-- Notice that registers 1 and 2 still contain the original input values. 
+Register 3 contains the answer and any other register can have 
+any temporary results stored i.e. you don't have to set
+any scratch registers back to 0. -->
+
+<p> Click <a href="#a1">here</a> to go back to the top of the page.
+
+<a name="a1p5"></a>
+<h3>Problem 5 &mdash; 7 marks of 46 (filename: <tt>a1p5.hex</tt>)</h3>
+Write the hexadecimal notation for a MIPS machine language program that
+adds 42 to the value in register 2 placing the result in register 3 and
+then returns. 
+<p> Example of running the program:
+<pre>
+Enter value for register 1: 2
+Enter value for register 2: 3
+Running MIPS program.
+MIPS program completed normally.
+$01 = 0x00000002   $02 = 0x00000003   $03 = 0x0000002D ...
+</pre>
+
+<p> Click <a href="#a1">here</a> to go back to the top of the page.
+
+<!-- Notice that registers 1 and 2 still contain the original input. Register 3 contains the answer and any other register can have 
+any temporary results stored i.e. you don't have to set
+any scratch registers back to 0. -->
+
+<a name="a1p6"></a>
+<h3>Problem 6 &mdash; 7 marks of 46 (filename: <tt>a1p6.hex</tt>)</h3>
+Write the hexadecimal notation for a MIPS machine language program that
+interprets the value in register 1 as the address of a word in memory,
+and places the address of the following word in memory in register 3 and
+then returns. 
+<!-- Maybe reword 'following word' to 'next word' to be a little more clear? Students might think we mean 'follow the address into the contents of the memory or something like that. -->
+<!-- Register 3 contains the answer and any other register can have 
+any temporary results stored i.e. you don't have to set
+any scratch registers back to 0. -->
+
+<p> Click <a href="#a1">here</a> to go back to the top of the page.
+
+</body>
+</html>

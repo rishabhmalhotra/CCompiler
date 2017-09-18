@@ -1,0 +1,15 @@
+type INT
+dcl type ID
+type INT
+dcl type ID
+dcls
+statements
+factor ID
+term factor
+expr term
+factor ID
+term factor
+expr expr PLUS term
+main INT WAIN LPAREN dcl COMMA dcl RPAREN LBRACE dcls statements RETURN expr SEMI RBRACE
+procedures main
+start BOF procedures EOF

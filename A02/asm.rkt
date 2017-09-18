@@ -1,0 +1,571 @@
+#lang racket
+(provide scan-input)
+
+;; scan is the main function provided, which uses the data definitions
+;; and helper functions that follow. Sample tests are at the bottom of the file.
+(define (scan str)
+  (scan-func str asmtrlst 'start asmfinal))
+
+;; scan-func: (listof char) trans-table symbol (listof symbol) -> (listof token)
+
+(define (scan-func str trans start final)
+  (scan-acc (string->list str) trans start final empty empty))
+
+;; Next we specify the data definitions for tokens and the various components
+;; of an FSM.
+
+(define-struct token (kind lexeme) #:transparent)
+
+;; A token is a (make-token k l), where k is a symbol
+;;  and l is (union (list char) int).
+
+(define-struct transition (state charset next) #:transparent)
+
+;; A transition table is a list of transitions.
+;; A transition is a (make-transition s cs ns), where s and ns are symbols,
+;;  and cs is a function char->boolean that tests whether the transition applies.
+
+;; The sample FSM provided is defined by (asmtrlst, 'start, asmfinal).
+;; Definitions of asmtrlst and asmfinal follow.
+
+;; functions used in defining sample transition table
+
+(define (one-to-nine? ch)
+  (and (char<=? #\1 ch) (char<=? ch #\9)))
+
+(define (hex-digit? ch)
+  (or
+   (char-numeric? ch)
+   (and (char<=? #\a ch) (char<=? ch #\f))
+   (and (char<=? #\A ch) (char<=? ch #\F))))
+
+(define (chartest ch)
+  (lambda (x) (char=? x ch)))
+
+;; sample transition table
+
+(define asmtrlst
+  (list
+   (make-transition 'start char-whitespace? 'whitespace)
+   (make-transition 'start char-alphabetic? 'id)
+   (make-transition 'id char-alphabetic? 'id)
+   (make-transition 'id char-numeric? 'id)
+   (make-transition 'start one-to-nine? 'int)
+   (make-transition 'int char-numeric? 'int)
+   (make-transition 'start (chartest #\-) 'minus)
+   (make-transition 'minus char-numeric? 'int)
+   (make-transition 'start (chartest #\,) 'comma)
+   (make-transition 'start (chartest #\() 'lparen)
+   (make-transition 'start (chartest #\)) 'rparen)
+   (make-transition 'start (chartest #\$) 'dollar)
+   (make-transition 'dollar char-numeric? 'register)
+   (make-transition 'register char-numeric? 'register)
+   (make-transition 'start (chartest #\0) 'zero)
+   (make-transition 'zero (chartest #\x) 'zerox)
+   (make-transition 'zero char-numeric? 'int)
+   (make-transition 'zerox hex-digit? 'hexint)
+   (make-transition 'hexint hex-digit? 'hexint)
+   (make-transition 'id (chartest #\:) 'label)
+   (make-transition 'start (chartest #\;) 'comment)
+   (make-transition 'comment (lambda (x) true) 'comment)
+   (make-transition 'start (chartest #\.) 'dot)
+   (make-transition 'dot (chartest #\w) 'dotw)
+   (make-transition 'dotw (chartest #\o) 'dotwo)
+   (make-transition 'dotwo (chartest #\r) 'dotwor)
+   (make-transition 'dotwor (chartest #\d) 'dotword)
+   ))
+
+;; sample list of final states
+
+(define asmfinal
+  (list
+    'register
+    'int
+    'id
+    'label
+    'comma
+    'lparen
+    'rparen
+    'zero
+    'hexint
+    'comment
+    'dotword
+    'whitespace
+    ))
+
+;; scan-acc is the main workhorse of the lexer. It uses accumulative recursion
+;; to run the FSM specified by (trans, state, final) on the list of characters cl.
+;; acc accumulates the characters of the current token in reverse order, and
+;; tacc accumulates the token list in reverse order.
+
+;; scan-acc: (listof char) trans-table symbol (listof symbol) (listof char) (listof token) -> (listof token)
+
+(define (scan-acc cl trans state final acc tacc)
+  (cond
+    [(empty? cl)
+       (if (member state final)
+           (if (or (symbol=? state 'whitespace) (symbol=? state 'comment))
+               (reverse tacc)
+               (reverse (cons (finalize-token state (reverse acc)) tacc)))
+           (error 'ERROR "unexpected end of string\n"))]
+    [else
+      (let ([trl (memf (lambda (x) (found-trans? state (first cl) x)) trans)])
+        (cond
+          [(and (boolean? trl) (member state final))
+             (if (symbol=? state 'whitespace)
+                 (scan-acc cl trans 'start final empty tacc)
+                 (scan-acc cl trans 'start final empty (cons (finalize-token state (reverse acc)) tacc)))]
+          [(boolean? trl)
+             (error 'ERROR "left to parse:~a ~a\n" state (list->string cl))]
+          [(symbol=? state 'comment)
+             (reverse tacc)]
+          [else
+             (scan-acc (rest cl) trans (transition-next (first trl)) final (cons (first cl) acc) tacc)]))]))
+
+;; helper functions for scan-acc
+
+(define (found-trans? state ch tr)
+  (and (symbol=? state (transition-state tr))
+       ((transition-charset tr) ch)))
+
+;; finalize-token symbol (listof char) -> token
+(define (finalize-token state l)
+  (cond
+    [(symbol=? state 'int) (make-token 'int (check-int-range (list->number l)))]
+    [(symbol=? state 'zero) (make-token 'int 0)]
+    [(symbol=? state 'hexint) (make-token 'hexint (check-hexint-range (list->hexint (rest (rest l)))))]
+    [(symbol=? state 'register) (make-token 'register (check-reg-range (list->number (rest l))))]
+    [else (make-token state l)]))
+
+;; helper functions for finalize-token
+
+(define (list->number lst) (string->number (list->string lst)))
+
+(define (list->hexint lst) (string->number (list->string lst) 16))
+
+;; Scheme supports unbounded integers but MIPS doesn't
+(define (check-int-range n)
+  (cond
+    [(<= -2147483648 n 4294967295) n]
+    [else (error 'ERROR "integer out of range: ~a" n)]))
+
+(define (check-hexint-range n)
+  (cond
+    [(<= 0 n 4294967295) n]
+    [else (error 'ERROR "integer out of range: ~a" n)]))
+
+(define (check-reg-range n)
+  (cond
+    [(<= 0 n 31) n]
+    [else (error 'ERROR "register out of range: ~a" n)]))
+
+;; Some very basic tests
+;(scan "01")
+;(scan "0xabcd ; should be ignored")
+;(scan ".word 01234")
+;(scan "0add")
+;(scan "foo:     add $1, $2, $3   ; A comment.")
+
+; increment iterator count on each recursive call (for it_count==0, counter_Accumulator=0 and for subsequent, check prev empty within bool
+(define it_count 0)
+(define list_hashes_global empty)
+(define lst_scanned empty)
+
+; checks if duplicate label yet:
+(define (duplicate_label_yet? lst_of_tokens)
+  (define l1 (list -1))
+  (cond
+    [(empty? list_hashes_global) false]
+    [else
+     (for-each (lambda(x)
+                 (for-each (lambda(y)
+                             (if (equal? (hashe-label_name y) (token-lexeme x)) (set! l1 (append (list 1) l1)) (set! l1 (append (list 0) l1))))
+                             list_hashes_global)) lst_of_tokens)
+     (if (member 1 l1) true false)]))
+    
+; Checks for legal .word inputs: true or error
+(define (legal_input? lst_of_tokens)
+  (cond
+    [(or (and (equal? (token-kind (first lst_of_tokens)) 'label)
+              (not (duplicate_label_yet? lst_of_tokens)))
+         (and (= (length lst_of_tokens) 2)
+              (equal? (token-kind (first lst_of_tokens)) 'dotword)
+              (or
+               (equal? (token-kind (second lst_of_tokens)) 'hexint)
+               (equal? (token-kind (second lst_of_tokens)) 'int)))
+         (and (equal? (token-kind (first lst_of_tokens)) 'dotword)
+              (equal? (token-kind (second lst_of_tokens)) 'id))
+         (and (equal? (token-kind (first lst_of_tokens)) 'label)
+              (> (length lst_of_tokens) 1)
+              (equal? (token-kind (second lst_of_tokens)) 'dotword)
+              (or (equal? (token-kind (third lst_of_tokens)) 'id)
+                  (equal? (token-kind (third lst_of_tokens)) 'int)
+                  (equal? (token-kind (third lst_of_tokens)) 'hexint)))
+         (and (equal? (token-kind (first lst_of_tokens)) 'id)
+              (or (equal? (list->string (token-lexeme (first lst_of_tokens))) "jr")
+                  (equal? (list->string (token-lexeme (first lst_of_tokens))) "jalr")
+                  (equal? (list->string (token-lexeme (first lst_of_tokens))) "lis")
+                  (equal? (list->string (token-lexeme (first lst_of_tokens))) "mflo")
+                  (equal? (list->string (token-lexeme (first lst_of_tokens))) "mfhi"))
+              (equal? (token-kind (second lst_of_tokens)) 'register)
+              (exact-integer? (token-lexeme (second lst_of_tokens)))
+              (>= (token-lexeme (second lst_of_tokens)) 0)
+              (<= (token-lexeme (second lst_of_tokens)) 31))
+         (and (equal? (length lst_of_tokens) 6)
+              (equal? (token-kind (first lst_of_tokens)) 'id)
+              (or (equal? (list->string (token-lexeme (first lst_of_tokens))) "add")
+                  (equal? (list->string (token-lexeme (first lst_of_tokens))) "sub")
+                  (equal? (list->string (token-lexeme (first lst_of_tokens))) "slt")
+                  (equal? (list->string (token-lexeme (first lst_of_tokens))) "sltu"))
+              (equal? (token-kind (second lst_of_tokens)) 'register)
+              (equal? (token-kind (third lst_of_tokens)) 'comma)
+              (equal? (token-kind (fourth lst_of_tokens)) 'register)
+              (equal? (token-kind (fifth lst_of_tokens)) 'comma)
+              (equal? (token-kind (sixth lst_of_tokens)) 'register)
+              (and (>= (token-lexeme (second lst_of_tokens)) 0)
+                   (<= (token-lexeme (second lst_of_tokens)) 31)
+                   (>= (token-lexeme (fourth lst_of_tokens)) 0)
+                   (<= (token-lexeme (fourth lst_of_tokens)) 31)
+                   (>= (token-lexeme (sixth lst_of_tokens)) 0)
+                   (<= (token-lexeme (sixth lst_of_tokens)) 31)))
+         (and (equal? (length lst_of_tokens) 6)
+              (equal? (token-kind (first lst_of_tokens)) 'id)
+              (or (equal? (list->string (token-lexeme (first lst_of_tokens))) "beq")
+                  (equal? (list->string (token-lexeme (first lst_of_tokens))) "bne"))
+              (equal? (token-kind (second lst_of_tokens)) 'register)
+              (equal? (token-kind (third lst_of_tokens)) 'comma)
+              (equal? (token-kind (fourth lst_of_tokens)) 'register)
+              (equal? (token-kind (fifth lst_of_tokens)) 'comma)
+              (or (and (equal? (token-kind (sixth lst_of_tokens)) 'int)
+                       (>= (token-lexeme (second lst_of_tokens)) 0)
+                       (<= (token-lexeme (second lst_of_tokens)) 31)
+                       (>= (token-lexeme (fourth lst_of_tokens)) 0)
+                       (<= (token-lexeme (fourth lst_of_tokens)) 31))
+                  (equal? (token-kind (sixth lst_of_tokens)) 'hexint)
+                  (equal? (token-kind (sixth lst_of_tokens)) 'id)))
+         (and (equal? (length lst_of_tokens) 4)
+              (equal? (token-kind (first lst_of_tokens)) 'id)
+              (or (equal? (list->string (token-lexeme (first lst_of_tokens))) "mult")
+                  (equal? (list->string (token-lexeme (first lst_of_tokens))) "multu")
+                  (equal? (list->string (token-lexeme (first lst_of_tokens))) "div")
+                  (equal? (list->string (token-lexeme (first lst_of_tokens))) "divu"))
+              (equal? (token-kind (second lst_of_tokens)) 'register)
+              (equal? (token-kind (third lst_of_tokens)) 'comma)
+              (equal? (token-kind (fourth lst_of_tokens)) 'register)
+              (and (>= (token-lexeme (second lst_of_tokens)) 0)
+                   (<= (token-lexeme (second lst_of_tokens)) 31)
+                   (>= (token-lexeme (fourth lst_of_tokens)) 0)
+                   (<= (token-lexeme (fourth lst_of_tokens)) 31)))
+         (and (equal? (length lst_of_tokens) 7)
+              (equal? (token-kind (first lst_of_tokens)) 'id)
+              (or (equal? (list->string (token-lexeme (first lst_of_tokens))) "sw")
+                  (equal? (list->string (token-lexeme (first lst_of_tokens))) "lw"))
+              (equal? (token-kind (second lst_of_tokens)) 'register)
+              (equal? (token-kind (third lst_of_tokens)) 'comma)
+              (or (and (equal? (token-kind (fourth lst_of_tokens)) 'int)
+                       (>= (token-lexeme (second lst_of_tokens)) 0)
+                       (<= (token-lexeme (second lst_of_tokens)) 31)
+                       (>= (token-lexeme (sixth lst_of_tokens)) 0)
+                       (<= (token-lexeme (sixth lst_of_tokens)) 31))
+                  (equal? (token-kind (fourth lst_of_tokens)) 'hexint))
+              (equal? (token-kind (fifth lst_of_tokens)) 'lparen)
+              (equal? (token-kind (sixth lst_of_tokens)) 'register)
+              (equal? (token-kind (seventh lst_of_tokens)) 'rparen)))]
+    [else (error 'ERROR "unexpected input\n")]))
+
+; output bytes to stdout
+(define (output-bytes int)
+  (for-each (lambda (x) (write-byte x (current-output-port)))
+            (if (< int 0)
+                (bytes->list (integer->integer-bytes int 4 true true (make-bytes 4) 0))
+                (bytes->list (integer->integer-bytes int 4 false true (make-bytes 4) 0)))))
+
+; bitwise ops for jr:
+(define (bitwise-opsjr int)
+    (bitwise-ior (arithmetic-shift int 21) 8))
+
+; bitwise ops for jalr:
+(define (bitwise-opsjalr int)
+    (bitwise-ior (arithmetic-shift int 21) 9))
+
+; bitwise ops for add:
+(define (bitwise-opsadd d s t)
+  (bitwise-ior (arithmetic-shift d 11) (arithmetic-shift s 21) (arithmetic-shift t 16) 32))
+
+; bitwise ops for sub:
+(define (bitwise-opssub d s t)
+  (bitwise-ior (arithmetic-shift d 11) (arithmetic-shift s 21) (arithmetic-shift t 16) 32 2))
+
+; bitwise ops for slt:
+(define (bitwise-opsslt d s t)
+  (bitwise-ior (arithmetic-shift d 11) (arithmetic-shift s 21) (arithmetic-shift t 16) 32 10))
+
+; bitwise ops for sltu:
+(define (bitwise-opssltu d s t)
+  (bitwise-ior (arithmetic-shift d 11) (arithmetic-shift s 21) (arithmetic-shift t 16) 32 11))
+
+; bitwise ops for beq:
+(define (bitwise-opsbeq s t i)
+  (if (>= i 0)
+      (bitwise-ior (arithmetic-shift 4 26) (arithmetic-shift s 21) (arithmetic-shift t 16) i)
+      (bitwise-ior (arithmetic-shift 4 26) (arithmetic-shift s 21) (arithmetic-shift t 16) (bitwise-and i 65535))))
+
+; bitwise ops for bne:
+(define (bitwise-opsbne s t i)
+  (if (>= i 0)
+      (bitwise-ior (arithmetic-shift 5 26) (arithmetic-shift s 21) (arithmetic-shift t 16) i)
+      (bitwise-ior (arithmetic-shift 5 26) (arithmetic-shift s 21) (arithmetic-shift t 16)  (bitwise-and i 65535))))
+
+; bitwise ops for lis:
+(define (bitwise-opslis d)
+  (bitwise-ior (arithmetic-shift d 11) 20))
+
+; bitwise ops for mflo:
+(define (bitwise-opsmflo d)
+  (bitwise-ior (arithmetic-shift d 11) 18))
+
+; bitwise ops for mfhi:
+(define (bitwise-opsmfhi d)
+  (bitwise-ior (arithmetic-shift d 11) 16))
+
+; bitwise ops for mult:
+(define (bitwise-opsmult s t)
+  (bitwise-ior (arithmetic-shift s 21) (arithmetic-shift t 16) 24))
+
+; bitwise ops for multu:
+(define (bitwise-opsmultu s t)
+  (bitwise-ior (arithmetic-shift s 21) (arithmetic-shift t 16) 25))
+
+; bitwise ops for div:
+(define (bitwise-opsdiv s t)
+  (bitwise-ior (arithmetic-shift s 21) (arithmetic-shift t 16) 26))
+
+; bitwise ops for divu:
+(define (bitwise-opsdivu s t)
+  (bitwise-ior (arithmetic-shift s 21) (arithmetic-shift t 16) 27))
+
+; bitwise ops for sw:
+(define (bitwise-opssw t i s)
+  (if (> i 0)
+      (bitwise-ior 2885681152 (arithmetic-shift t 16) (arithmetic-shift s 21) i)
+      (bitwise-ior 2885681152 (arithmetic-shift t 16) (arithmetic-shift s 21) (bitwise-and i 65535))))
+
+; bitwise ops for lw:
+(define (bitwise-opslw t i s)
+  (if (> i 0)
+      (bitwise-ior 2348810240 (arithmetic-shift t 16) (arithmetic-shift s 21) i)
+      (bitwise-ior 2348810240 (arithmetic-shift t 16) (arithmetic-shift s 21) (bitwise-and i 65535))))
+
+; label_name is a string, counter_Accumulator is non-empty lines above and
+; empty? is bool with val of present being empty
+(define-struct hashe (label_name counter_Accumulator empty?) #:transparent)
+
+
+; keep track of labels and non-empty lines above
+(define (maintain_list_hashes it_count scanned)
+  (define store_index 0)
+  (cond 
+    [(equal? (length scanned) 1) (cond
+                                   [(equal? (length list_hashes_global) 0) (set! list_hashes_global
+                                                                                 (append (list (make-hashe (token-lexeme (first scanned)) (+ it_count 0) true)) list_hashes_global))]
+                                   [(hashe-empty? (list-ref list_hashes_global (- (length list_hashes_global) 1)))
+                                    (map (lambda(x) (cond
+                                                      [(equal? (token-kind x) 'label)
+                                                       (set! list_hashes_global (append (list (make-hashe (token-lexeme x)
+                                                                                                          (+ (hashe-counter_Accumulator
+                                                                                                              (list-ref list_hashes_global (- (length list_hashes_global) 1)))
+                                                                                                             0) true)) list_hashes_global))])) scanned)]
+                                   [else (set! store_index (- (length list_hashes_global) 1))
+                                         (map (lambda(x) (cond
+                                                           [(equal? (token-kind x) 'label)
+                                                            (set! list_hashes_global (append (list (make-hashe (token-lexeme x)
+                                                                                                               (+ (hashe-counter_Accumulator
+                                                                                                                   (list-ref list_hashes_global store_index))
+                                                                                                                  1) true)) list_hashes_global))])) scanned)])]
+    ; (> (length scanned) 1):
+    ; eg: Label0: Label1: Label2: ....(all on same line)
+    [else (cond
+            [(equal? (length list_hashes_global) 0) (map (lambda (x) (set! list_hashes_global
+                                                                           (append (list (make-hashe (token-lexeme x) (+ it_count 0)
+                                                                                                     (andmap (lambda(x) (equal? (token-kind x) 'label)) scanned)))
+                                                                                   list_hashes_global))) scanned)]
+            [(hashe-empty? (list-ref list_hashes_global (- (length list_hashes_global) 1)))
+             (set! store_index (- (length list_hashes_global) 1))
+             (map (lambda (x) (set! list_hashes_global (append (list (make-hashe (token-lexeme x)
+                                                                                 (+ (hashe-counter_Accumulator
+                                                                                     (list-ref list_hashes_global store_index))
+                                                                                    0) (andmap (lambda(x) (equal? (token-kind x) 'label)) scanned))) list_hashes_global))) scanned)]
+            
+            [else (set! store_index (- (length list_hashes_global) 1))
+                  (map (lambda (x) (set! list_hashes_global (append (list (make-hashe (token-lexeme x)
+                                                                                      (+ (hashe-counter_Accumulator
+                                                                                          (list-ref list_hashes_global
+                                                                                                    (- (length list_hashes_global) 1)))
+                                                                                         1) (andmap (lambda(x) (equal? (token-kind x) 'label))
+                                                                                                    scanned))) list_hashes_global))) scanned)])]))
+
+
+; returns index by given element 'e' for a list 'lst':
+(define (element-index e lst)
+    (cond [(eqv? e (car lst)) 0]
+          [else (+ (element-index e (cdr lst)) 1)]))
+
+
+(define (pass2)
+  (for-each (lambda(z)
+              (when (> (length z) 1)
+                (for-each (lambda(y)
+                            (cond
+                            [(and
+                              (equal? (token-kind y) 'dotword)
+                              (equal? (token-kind (list-ref z (+ (element-index y z) 1))) 'id))                                           ;(list-ref z (- (element-index y z) 1))
+                             (for-each (lambda(x) (when (equal? (list->string (token-lexeme (list-ref z (+ (element-index y z) 1))))
+                                                                (substring (list->string (hashe-label_name x)) 0
+                                                                           (- (string-length (list->string (hashe-label_name x))) 1)))
+                                                    (output-bytes (* (hashe-counter_Accumulator x) 4))))
+                                       list_hashes_global)]
+                            [(and (equal? (token-kind y) 'id)
+                                  (equal? (list->string (token-lexeme y)) "jr"))
+                             (when (equal? (token-kind (list-ref z (+ (element-index y z) 1))) 'register)
+                               (output-bytes (bitwise-opsjr (token-lexeme (list-ref z (+ (element-index y z) 1))))))]
+                            [(and (equal? (token-kind y) 'id)
+                                  (equal? (list->string (token-lexeme y)) "jalr"))
+                             (when (equal? (token-kind (list-ref z (+ (element-index y z) 1))) 'register)
+                               (output-bytes (bitwise-opsjalr (token-lexeme (list-ref z (+ (element-index y z) 1))))))]
+                            [(and (equal? (token-kind y) 'id)
+                                  (equal? (list->string (token-lexeme y)) "add"))
+                             (output-bytes (bitwise-opsadd (token-lexeme (list-ref z (+ (element-index y z) 1)))
+                                                           (token-lexeme (list-ref z (+ (element-index y z) 3)))
+                                                           (token-lexeme (list-ref z (+ (element-index y z) 5)))))]
+                            [(and (equal? (token-kind y) 'id)
+                                  (equal? (list->string (token-lexeme y)) "sub"))
+                             (output-bytes (bitwise-opssub (token-lexeme (list-ref z (+ (element-index y z) 1)))
+                                                           (token-lexeme (list-ref z (+ (element-index y z) 3)))
+                                                           (token-lexeme (list-ref z (+ (element-index y z) 5)))))]
+                            [(and (equal? (token-kind y) 'id)
+                                  (equal? (list->string (token-lexeme y)) "slt"))
+                             (output-bytes (bitwise-opsslt (token-lexeme (list-ref z (+ (element-index y z) 1)))
+                                                           (token-lexeme (list-ref z (+ (element-index y z) 3)))
+                                                           (token-lexeme (list-ref z (+ (element-index y z) 5)))))]
+                            [(and (equal? (token-kind y) 'id)
+                                  (equal? (list->string (token-lexeme y)) "sltu"))
+                             (output-bytes (bitwise-opssltu (token-lexeme (list-ref z (+ (element-index y z) 1)))
+                                                            (token-lexeme (list-ref z (+ (element-index y z) 3)))
+                                                            (token-lexeme (list-ref z (+ (element-index y z) 5)))))]
+                            [(and (equal? (token-kind y) 'id)
+                                  (equal? (list->string (token-lexeme y)) "beq"))
+                             (if (equal? (token-kind (list-ref z (+ (element-index y z) 5))) 'id)
+                                 (for-each (lambda(x) (when (equal? (hashe-label_name x) (token-lexeme (list-ref z (+ (element-index y z) 5))))
+                                                        (output-bytes (bitwise-opsbeq (token-lexeme (list-ref z (+ (element-index y z) 1)))
+                                                                                      (token-lexeme (list-ref z (+ (element-index y z) 3)))
+                                                                                      (* (hashe-counter_Accumulator x) 4)))))
+                                           list_hashes_global)
+                             (output-bytes (bitwise-opsbeq (token-lexeme (list-ref z (+ (element-index y z) 1)))
+                                                           (token-lexeme (list-ref z (+ (element-index y z) 3)))
+                                                           (token-lexeme (list-ref z (+ (element-index y z) 5))))))]
+                            [(and (equal? (token-kind y) 'id)
+                                  (equal? (list->string (token-lexeme y)) "bne"))
+                             (if (equal? (token-kind (list-ref z (+ (element-index y z) 5))) 'id)
+                                 (for-each (lambda(x) (when (equal? (hashe-label_name x) (token-lexeme (list-ref z (+ (element-index y z) 5))))
+                                                        (output-bytes (bitwise-opsbne (token-lexeme (list-ref z (+ (element-index y z) 1)))
+                                                                                      (token-lexeme (list-ref z (+ (element-index y z) 3)))
+                                                                                      (* (hashe-counter_Accumulator x) 4)))))
+                                           list_hashes_global)
+                             (output-bytes (bitwise-opsbne (token-lexeme (list-ref z (+ (element-index y z) 1)))
+                                                           (token-lexeme (list-ref z (+ (element-index y z) 3)))
+                                                           (token-lexeme (list-ref z (+ (element-index y z) 5))))))]
+                            [(and (equal? (token-kind y) 'id)
+                                  (equal? (list->string (token-lexeme y)) "lis"))
+                             (output-bytes (bitwise-opslis (token-lexeme (list-ref z (+ (element-index y z) 1)))))]
+                            [(and (equal? (token-kind y) 'id)
+                                  (equal? (list->string (token-lexeme y)) "mflo"))
+                             (output-bytes (bitwise-opsmflo (token-lexeme (list-ref z (+ (element-index y z) 1)))))]
+                            [(and (equal? (token-kind y) 'id)
+                                  (equal? (list->string (token-lexeme y)) "mfhi"))
+                             (output-bytes (bitwise-opsmfhi (token-lexeme (list-ref z (+ (element-index y z) 1)))))]
+                            [(and (equal? (token-kind y) 'id)
+                                  (equal? (list->string (token-lexeme y)) "mult"))
+                             (output-bytes (bitwise-opsmult (token-lexeme (list-ref z (+ (element-index y z) 1)))
+                                                            (token-lexeme (list-ref z (+ (element-index y z) 3)))))]
+                            [(and (equal? (token-kind y) 'id)
+                                  (equal? (list->string (token-lexeme y)) "multu"))
+                             (output-bytes (bitwise-opsmultu (token-lexeme (list-ref z (+ (element-index y z) 1)))
+                                                             (token-lexeme (list-ref z (+ (element-index y z) 3)))))]
+                            [(and (equal? (token-kind y) 'id)
+                                  (equal? (list->string (token-lexeme y)) "div"))
+                             (output-bytes (bitwise-opsdiv (token-lexeme (list-ref z (+ (element-index y z) 1)))
+                                                           (token-lexeme (list-ref z (+ (element-index y z) 3)))))]
+                            [(and (equal? (token-kind y) 'id)
+                                  (equal? (list->string (token-lexeme y)) "divu"))
+                             (output-bytes (bitwise-opsdivu (token-lexeme (list-ref z (+ (element-index y z) 1)))
+                                                            (token-lexeme (list-ref z (+ (element-index y z) 3)))))]
+                            [(and (equal? (token-kind y) 'id)
+                                  (equal? (list->string (token-lexeme y)) "lw"))
+                             (output-bytes (bitwise-opslw (token-lexeme (list-ref z (+ (element-index y z) 1)))
+                                                          (token-lexeme (list-ref z (+ (element-index y z) 3)))
+                                                          (token-lexeme (list-ref z (+ (element-index y z) 5)))))]
+                            [(and (equal? (token-kind y) 'id)
+                                  (equal? (list->string (token-lexeme y)) "sw"))
+                             (output-bytes (bitwise-opssw (token-lexeme (list-ref z (+ (element-index y z) 1)))
+                                                          (token-lexeme (list-ref z (+ (element-index y z) 3)))
+                                                          (token-lexeme (list-ref z (+ (element-index y z) 5)))))]
+                            ))
+                        z)))
+            lst_scanned))
+
+; Global variable for counter for non-empty rows above:
+(define counter_Accumulator 0)
+
+; Global to check for labels to occur after usage
+(define checkLabelAfterUse empty)
+
+; This file just uses scan to tokenize each line of the input
+(define (scan-input)
+  (define line (read-line))
+  (cond
+    [(eof-object? line)
+     (when (not (andmap (lambda(x) (member (list->string x) (map (lambda(y) (substring (list->string (hashe-label_name y))
+                                                                                       0
+                                                                                       (- (string-length (list->string (hashe-label_name y))) 1)))
+                                                                 list_hashes_global)))
+                        checkLabelAfterUse))
+       (error 'ERROR "label used but not defined\n"))                                   ; error check for (missing) label definition after call
+     (when (not (empty? lst_scanned))
+       (pass2))]
+    [(> (string-length line) 0)
+     ; Ignore blank lines
+     ; Ignore comment-only lines as well
+     ; When a comment-only line is scanned, an empty struct is returned
+     (define scanned (scan line))
+     (cond
+       [(empty? scanned) (scan-input)]
+       [(legal_input? scanned)
+        (set! lst_scanned (append lst_scanned (list scanned)))
+        (cond
+          [(empty? scanned) (scan-input)]
+          [(and (equal? (length scanned) 2)
+                (equal? (token-kind (first scanned)) 'dotword)                                              ; conditions/printing for 'dotword
+                (not (equal? (token-kind (second scanned)) 'id)))
+           (output-bytes (token-lexeme (second scanned)))
+           (set! it_count (+ it_count 1))
+           (scan-input)]
+          [(and (equal? (length scanned) 2)
+                (equal? (token-kind (first scanned)) 'dotword)                                              ; conditions 'dotword first then label
+                (equal? (token-kind (second scanned)) 'id))
+           (set! it_count (+ it_count 1))
+           (set! checkLabelAfterUse (when (or (not (member (token-lexeme (second scanned)) checkLabelAfterUse))
+                                              (empty? checkLabelAfterUse))
+                                        (append checkLabelAfterUse (list (token-lexeme (second scanned))))))
+           (scan-input)]
+          [(equal? (token-kind (first scanned)) 'label)                                                     ; conditions for 'label
+           (maintain_list_hashes it_count scanned)
+           (if (= (length scanned) 1) (set! it_count (+ it_count 0)) (cond
+                                                                       [(not (andmap (lambda(x) (equal? (token-kind x) 'label)) scanned))
+                                                                        (set! it_count (+ it_count 1))]
+                                                                       [else (set! it_count (+ it_count 0))]))
+           (scan-input)]
+          [else (scan-input)
+                (set! it_count (+ it_count 1))])])]
+    [else (scan-input)]))
+
+(scan-input)

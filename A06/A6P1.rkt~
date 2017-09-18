@@ -1,0 +1,14 @@
+#lang racket
+
+;; scan is the main function provided, which uses the data definitions
+;; and helper functions that follow
+
+(define (scan str)
+  (scan-func str asmtrlst 'start asmfinal))
+
+
+;; scan-func: (listof char) trans-table symbol (listof symbol) -> (listof token)
+
+(define (scan-func str trans start final)
+  (scan-acc (string->list str) trans start final empty empty))
+

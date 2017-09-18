@@ -1,0 +1,369 @@
+<h2>Unix for <a href=".">CS 241</a> &mdash; The Bare Essentials</h2>
+<h3>Introduction</h3>
+All CS 241 assignments use the Unix computers of the <a href=http://www.cs.uwaterloo.ca/cscf/student/>CSCF Student Computing Environment</a>.  These are accessed directly
+from the CSCF terminal rooms on the 3rd floor of the Math & Computer Building (MC).
+<i><p>
+In Unix, there are many ways to do everything.  This document describes one way
+to do each of the things you need to do the first couple of assignments.  Alternatives
+are mentioned in italics.  </p>
+</i>
+<h3>Logging in and accessing the command line</h3>
+
+<p>Use your WatIAM/Quest user id and password to log in to the lab computers.
+(If you can't log in, and you're sure that you are using the correct credentials, you
+should speak with a consultant in the <a href=http://www.math.uwaterloo.ca/mfcf/help/>MFCF Help Centre</a>
+in MC 3017 about your account.) Once you have logged in, you will be presented with a
+graphical user interface. You will need to access the command line interface to do
+CS 241 course work.</p>
+
+<p>If you are using a Mac, you can run either "X11" or "Terminal". On Linux
+machines, look under "Applications" for a program called "Console" or
+"Terminal" or something similar. On Solaris machines, there will be a number of
+command line windows or "xterms" already open.</p>
+
+<p>To execute a Unix command in a terminal (command-line window), first select the
+terminal you want to run the command in. On Solaris, position the mouse cursor
+over the appropriate window. On Linux, click on the appropriate window. Then
+simply type the command name and press Enter.</p>
+
+<h3>Connecting to a Unix server with SSH</h3>
+
+<p>The Unix-based systems in the labs will allow you to access the files on your
+student account and run various standard Unix commands, but they do not
+necessarily have all the software you will need to complete your assignments.
+To do course work, you will need to connect to another system with the SSH
+(Secure SHell) protocol.</p>
+
+<p>There are a number of hosts available in the student computing environment (see
+<a href=http://www.cs.uwaterloo.ca/cscf/student/hosts>http://www.cs.uwaterloo.ca/cscf/student/hosts</a>), but it is recommended that you
+use one of the <b>linux.student.cs.uwaterloo.ca</b> computers. Other systems may
+have different configurations and outdated software, and we cannot guarantee
+that the CS 241 course tools will work properly on those systems. If you are
+having issues with any of the programs and tools mentioned in lectures or
+assignment specifications, make sure you are running them from a
+<b>linux.student.cs.uwaterloo.ca</b> host before asking for help.</p>
+
+<p>To connect to a host, execute the following command in a command line window:
+
+<pre>
+  <tt><b>ssh -Y linux.student.cs.uwaterloo.ca</b></tt>
+</pre>
+
+<i>(The "-Y" part is optional. Including it enables "X11 forwarding", which allows you
+to start graphical windowed programs from the terminal.)</i></p>
+
+<p>You will be asked for a username and password; enter your WatIAM/Quest
+credentials. Note that unlike many password prompts, the prompt from the <tt><b>ssh</b></tt>
+command will not display "*" characters as you type each character of your password, so it
+might seem like it's not receiving your keyboard input. However, it is receiving input, so
+if you just type your password correctly and hit Enter then you should be able to log in.
+Then you should see a command prompt that looks something like this:
+
+<pre>
+  <i>linux028:~></i>
+</pre>
+
+Where "linux028" is the name of the machine you are connected to. You can use
+this command prompt to do work on the remote machine just as you would with a
+local command line window. The rest of this document will explain some of the
+basic commands and tools you will need to know to complete CS 241 assignments.</p>
+
+<p><i>Note: SSH can also be used to access the Unix hosts from any computer with an
+internet connection. Thus, if you have an SSH client on your home computer, you
+can use SSH to do your course work from home. Any Unix-based computer
+(including Macs) will probably already have the <tt><b>ssh</b></tt> command available,
+so you just need to open the command line and execute <tt><b>ssh -Y
+linux.student.cs.uwaterloo.ca</b></tt> as above. Windows installations normally
+do not come with an SSH client, so you will have to install one yourself.
+<b>PuTTY</b> is a commonly used free SSH client, and can be downloaded from
+<a href=http://www.chiark.greenend.org.uk/~sgtatham/putty/>http://www.chiark.greenend.org.uk/~sgtatham/putty/</a>. Another option is to
+install <b>Cygwin</b>, a Unix-like environment for Windows that has the
+<tt><b>ssh</b></tt> command available.</i></p>
+
+<h3>Unix command line basics</h3>
+Note: In this document what you type is shown in <tt><b>bold typewriter font</b></tt>
+and what the computer generates is shown in <tt><i>italic typewriter font</i></tt>,
+but you won't see any difference on the screen.
+
+Let's try executing a simple Unix command. One such command is <tt><b>date</b></tt> which simply outputs the time and date:
+
+<pre>
+   <i>linux028:~></i> <b>date</b>
+   <i>Mon Sep 19 10:56:51 EDT 2011</i>
+   <i>linux028:~></i>
+</pre>
+You can redirect the standard output of a Unix command to a file using <b>></b> (a 'greater than' sign) followed by a name for the file; for example,
+
+<pre>
+   <i>linux028:~></i> <b>date > myfile</b>
+   <i>linux028:~></i>
+</pre>
+places the output of the <tt>date</tt> command in the file named <tt>myfile</tt>.
+The <tt>cat</tt> command shows the contents of one or more files.  The output
+of <tt>cat</tt>, like any other command, may be redirected.  The three commands
+below show the contents of <tt>myfile</tt>, copy the contents of
+
+<tt>myfile</tt> to <tt>yourfile</tt>, and show the contents of both <tt>myfile</tt>
+and <tt>yourfile</tt> concatenated together (hence the name <tt>cat</tt>).
+<br><br><br>
+<pre>
+   <i>linux028:~></i> <b>cat myfile</b>
+
+   <i>Mon Sep 19 10:56:51 EDT 2011</i>
+   <i>linux028:~></i> <b>cat myfile > yourfile</b>
+   <i>linux028:~></i> <b>cat myfile yourfile</b>
+   <i>Mon Sep 19 10:56:51 EDT 2011</i>
+   <i>Mon Sep 19 10:56:51 EDT 2011</i>
+
+   <i>linux028:~></i>
+</pre>
+<tt><b>cat</b></tt>, like many commands, can take its input from the <i>standard
+input</i>.
+The first <tt>cat</tt> command below takes two lines of input from the keyboard
+and puts them in the file <tt>theirfile</tt>.
+Using the keyboard it is necessary to type the two lines and in addition
+to indicate the end of input by typing ^D (D with the control key held down).
+The second <tt>cat</tt> command shows the contents of the newly created
+file.
+<pre>
+   <i>linux028:~></i> <b>cat > theirfile</b>
+   <b>the quick brown fox jumps over the lazy dog
+   now is the time for all good men to come to the aid of the party</b>
+   ^D
+   <i>linux028:~></i> <b>cat theirfile</b>
+   <i>the quick brown fox jumps over the lazy dog
+   now is the time for all good men to come to the aid of the party</i>
+
+   <i>linux028:~></i>
+</pre>
+Standard input may also be redirected from a file using <b>&lt;</b> (a 'less than' sign):
+<pre>
+   <i>linux028:~></i> <b>cat &lt; myfile</b>
+   <i>Mon Sep 19 10:56:51 EDT 2011</i>
+
+   <i>linux028:~></i>
+</pre>
+<p><i>Note:  Be sure to use </i><tt>^D</tt> <i>to indicate the end of input,
+not </i><tt>^Z</tt><i> as with Windows. If you use </i><tt>^Z</tt><i>, you'll
+suspend the cat command and it will stay suspended until you use the </i>
+<tt>fg</tt><i>
+command to start it up again.  These facilities are examples of Unix <b>job control</b>.</i>
+
+<h3>Manipulating files and directories</h3>
+<tt>ls</tt> lists the names of the files that you have created, in addition to some
+files automatically created by the system.  <tt>rm</tt> removes (deletes) a file immediately
+and forever <i>but there are periodic backups in case you delete your life's work</i>.
+<tt>cp</tt> copies a file and <tt>mv</tt> moves (renames) a file.
+<pre>
+
+   <i>linux028:~></i> <b>ls</b>
+   <i>bin       cs241           myfile        theirfile     yourfile</i>
+   <i>linux028:~></i> <b>rm theirfile</b>
+   <i>linux028:~></i> <b>cp myfile zip</b>
+   <i>linux028:~></i> <b>mv zip zap</b>
+   <i>linux028:~></i> <b>ls</b>
+   <i>bin       cs241           myfile        yourfile      zap</i>
+
+   <i>linux028:~></i>
+</pre>
+
+<p>You will probably want to organize your files into different directories, instead of
+leaving everything in the default home directory. Each time you enroll in a CS course,
+a directory for that course is automatically created. You can use the <tt>cd</tt>
+command to change to your personal cs241 directory:
+<pre>
+   <i>linux028:~></i> <b>cd cs241</b>
+   <i>linux028:~/cs241></i>
+</pre>
+This directory is a convenient place to store all the files you create for the course.
+You can organize things further by using the <tt>mkdir</tt> command to make new directories.
+For example, suppose you want to create a directory to store all the files for the first
+assignment:
+<pre>
+   <i>linux028:~/cs241></i> <b>mkdir A1</b>
+   <i>linux028:~/cs241></i> <b>cd A1</b>
+   <i>linux028:~/cs241/A1></i>
+</pre>
+When you're finished working on Assignment 1, you can change back to your home directory.
+In Unix, <tt><b>..</b></tt> refers to the directory "above" your current working directory.
+So simply type <tt>cd ..</tt> twice:
+<pre>
+   <i>linux028:~/cs241/A1></i> <b>cd ..</b>
+   <i>linux028:~/cs241></i> <b>cd ..</b>
+   <i>linux028:~></i>
+</pre>
+Alternatively, <b>~</b> refers to the home directory. So from anywhere in the system, you can
+type <tt>cd ~</tt> to return to your home directory.
+
+<pre>
+   <i>linux028:~/cs241/A1/P1/solutions/attempt279></i> <b>cd ~</b>
+   <i>linux028:~></i>
+</pre>
+</p>
+
+<h3>Copying files between computers</h3>
+If you are working from your own computer (do remember to always use the CSCF Unix
+environments to create files and test your solutions!) you can easily copy files back and
+forth using the <tt>scp</tt> command. This should be done from your computer's Unix
+environment <i>(on Windows, you will need to download an SCP client or install Cygwin)</i>.
+The format of the command is <tt>scp PathToFile PathToTargetDir</tt>. You
+can perform host-machine to server copying, server to host-machine copying, and
+server to server copying with the <tt>scp</tt> command. To specify a server name, use
+the format <tt>userid@host</tt>. To specify a file path within the host, use a
+colon to separate the userid@host from the file path.
+
+<pre>
+   <i>freds-computer:~></i> <b>ls</b>
+   <i>bin       cs241           myfile        yourfile      zap</i>
+   <i>freds-computer:~></i> <b>scp myfile fred@linux.student.cs.uwaterloo.ca:~/cs241/</b>
+   <i>fred@student.cs.uwaterloo.ca's password:</i>
+
+   <i>myfile                                    100%  185     0.2KB/s   00:00</i>
+   <i>freds-computer:~></i> <b>scp fred@linux.student.cs.uwaterloo.ca:~/cs241/myfile ./</b>
+   <i>fred@student.cs.uwaterloo.ca's password:</i>
+
+   <i>myfile                                    100%  185     0.2KB/s   00:00</i>
+</pre>
+In the first example, you are first copying <tt>myfile</tt> to Fred's CS account,
+fred@student.cs.uwaterloo.ca, and placing it in the directory <tt>~/cs241/</tt>.
+In the second example, you are copying <tt>myfile</tt> from the directory <tt>~/cs241/</tt>
+on Fred's CS account, to the directory <tt>./</tt>.
+(In Unix, <b>.</b> refers to your current working directory.)
+
+<h3>Editors</h3>
+You can create and edit files using <tt>evim</tt>.  The command below starts the
+<tt>evim</tt> editor in a new window to edit the file <tt>myfile</tt>.
+You can type text into the <tt>evim</tt> window and there are icons and menus to do all the
+things you've become accustomed to like cut and paste, printing, and so on.
+<pre>
+   <i>linux028:~></i> <b>evim myfile &amp;</b>
+</pre>
+<p><i><tt>evim</tt> is a dumbed-down version of <tt>gvim</tt>.  <tt>gvim</tt> a graphical
+version of the character-based editor <tt>vim</tt>.  <tt>vim</tt> is an extended
+version of the standard Unix editor <tt>vi</tt>.  <tt>vi</tt>
+
+has very powerful command and macro facilities, and is the prefered editor of many
+serious programmers.  But those accustomed to Windows-based editors may find it
+weird.  <tt>evim</tt> removes the weirdness at the expense of being incompatible.
+<tt>gvim</tt> is compatible and so requires you hit the <tt>i</tt> key before
+inserting text in the file.  (If you start gvim and hit <tt>i</tt>
+it behaves pretty much the same way as evim until you hit esc.  Then
+if you hit <tt>i</tt> again it behaves like <tt>evim</tt> again.)</i></p>
+<p><i><tt>evim</tt> and <tt>gvim</tt> are graphical programs that run in a separate
+window from the terminal. Thus, as explained in the SSH section, you will need to include
+the -Y flag when you run the <tt>ssh</tt> command to be able to use these windowed programs. If you
+are having trouble running them, you will have to use an editor that runs in the terminal such
+as <tt>vim</tt>, <tt>emacs</tt> or <tt>pico</tt>. <tt>pico</tt> is the simplest of the
+three to use, but also the least powerful.</i></p>
+
+<h3>Email, Newsgroups and the Web</h3>
+You will need to read email, newsgroups and web pages for this course's
+work.  You will also need to use the web in order to submit your
+assignments.  <tt>mozilla</tt> does all of these things; to start
+<tt>mozilla</tt>:
+<pre>
+   <i>linux028:~></i> <b>mozilla &amp;</b>
+</pre>
+
+<p><i>Like <tt>evim</tt> and <tt>gvim</tt>, <tt>mozilla</tt> runs in a window, so you will
+need to enable X11 forwarding by giving the -Y option to ssh. If you don't want to run
+windowed programs, you can use the terminal programs <tt>w3m</tt> to browse the web and
+<tt>alpine</tt> to read email and news. If you only need to use a web browser to submit
+assignments, the
+<a href=http://www.student.cs.uwaterloo.ca/~cs241/marmoset_submit/><tt>marmoset_submit</tt></a>
+ script is much easier to use than <tt>w3m</tt>
+or <tt>mozilla</tt>.</i></p>
+
+To read mail and news, click
+the envelope icon near the bottom left of the Mozilla window.  The
+first time you do this you'll have to answer some questions:
+<ul>
+<li>New Account Setup:  <i>Email account</i>
+<li>Identity:  <i>your name and UW email address</i>
+<li>Server Information:
+<ul><li>select IMAP
+<li>Incoming Server:  mailservices.uwaterloo.ca
+<li>Outgoing Server:  mailservices.uwaterloo.ca
+</ul>
+<li>Incoming User Name:  <i>(your uw userid)</i>
+<li>Enter your password:  <i>(your login password)</i>
+
+</ul>
+<p><i>(If "mailservices.uwaterloo.ca" does not work, your email account may be on a different
+server. You will have to figure out the correct server information on your own. It is most
+likely somewhere on your department/faculty's website.)</i></p>
+
+<p>Then you'll get a mail/news window.  In this window, click your email
+address in the left panel.  In the right panel, under <tt>Accounts</tt>
+click <tt>Create a new account</tt>.
+This time:
+<ul>
+<li>New Account Setup:  <i>Newsgroup account</i>
+<li>Identity:  <i>your name and UW email address</i>
+<li>Newsgroup server:  news.math
+<li>Account Name:  news.math
+
+</ul>
+In the left panel of your news window click <tt>news.math</tt> and in the
+right panel click <tt>Manage newsgroup subscriptions</tt>.  Find <tt>uw.cs.cs241</tt>
+and any other newsgroups you want to read and click <tt>Subscribe</tt> then <tt>OK</tt>.
+Now you can read your mail by clicking <tt>Inbox</tt> on the left panel and you
+can read the newsgroup by clicking <tt>uw.cs.cs241</tt> in the same panel.
+
+<p><i>
+If you already use another program to read email and news, feel free to continue.
+Make sure that you do receive and read mail addressed to your UW account!
+You can browse the web from home, too, but you might have trouble submitting your
+assignments from home if they are on a UW computer!</i></p>
+<h3>Course-Specific Tools</h3>
+Special Unix commands are required for some of your assignments.
+Usage of the tools will be described with the assignments that require them.
+Before using these commands you must enable them by entering:
+<pre>
+   <i>linux028:~></i> <b>source /u/cs241/setup</b>
+</pre>
+<p><i>You must re-enter this command whenever you log out and log in again.  You can automate this process by using <tt>evim</tt> to edit the file named <tt>.cshrc</tt>
+You need to insert this line immediately before the second-last <tt>endif</tt>
+in the file.  If you screw up this file, bad things will happen.</i>
+<h3>Marmoset Automatic Grading System</h3>
+All assignments will be submitted electronically by using a Web browser to
+access the Marmoset system.  A link to Marmoset may be found on the
+course web page.
+
+<p>Alternatively, you can use the <tt><b>marmoset_submit</b></tt> command line tool to
+submit assignments. It is much easier and faster than doing it through a web browser.
+You need to run the <tt><b>source /u/cs241/setup</b></tt> command before <tt>marmoset_submit</tt>
+will be available. A more complete tutorial is here:
+<a href=http://www.student.cs.uwaterloo.ca/~cs241/marmoset_submit/>
+http://www.student.cs.uwaterloo.ca/~cs241/marmoset_submit/</a></p>
+
+<p>
+To use Marmoset, log in using your WatIAM/Quest user id and password.
+Marmoset displays a table of "Projects" -- each question in each assignment
+is treated as a separate project.  Use the link in the column titled
+<tt>project</tt> to view the assignment specification; use the link in the
+column titled <tt>submissions</tt> to view the status and grade for any
+previous submissions you have made for this project; use the link in the
+column labeled <tt>web submission</tt> to submit a file for testing.  When
+you click <tt>submit</tt> a page will open to allow you to type or select
+the name of your file containing your submission.</p>
+<p>
+Your submission will immediately be run on a set of public tests; these results
+should be available quite quickly -- you must refresh the view screen to see
+the scores when they are available.</p>
+<p>
+If your submission succeeds on the public tests you will be invited to submit
+for release testing; that is, for actual grading.  You will be informed as to
+which of the release tests your program passes, but no details.  If you fail
+some tests you should debug your submission and resubmit.  There is no penalty
+for resubmission, but to encourage you to start early and to discourage you
+from stabbing in the dark you are restricted to three release tests per project
+per day.</p>
+<h3>Further Reading</h3><i>
+CSCF Environment:  <a href=http://www.cs.uwaterloo.ca/cscf/student/>http://www.cs.uwaterloo.ca/cscf/student/</a><br>
+CSCF Unix Hostnames: <a href=http://www.cs.uwaterloo.ca/cscf/student/hosts>http://www.cs.uwaterloo.ca/cscf/student/hosts</a><br>
+
+A much larger tutorial: <a href=http://www.math.uwaterloo.ca/mfcf/service-groups/consultants/firstweek/>http://www.math.uwaterloo.ca/mfcf/service-groups/consultants/firstweek/</a><br>
+FAQ: <a href=http://webtest.mfcf.uwaterloo.ca/wiki/index.php/MFCF_FAQ>http://webtest.mfcf.uwaterloo.ca/wiki/index.php/MFCF_FAQ</a>
+<p><i>If you notice any errors in this document, report them to
+cs241@student.cs.uwaterloo.ca.</i></p>
